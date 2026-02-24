@@ -1,26 +1,28 @@
-name: MiTV SADA Streamer
+name: MiTV Auto Streamer
 
 on:
-  workflow_dispatch:
-    inputs:
-      stream_url:
-        description: 'M3U8 Link yahan paste karein'
-        required: true
-        default: ''
+  push:
+    paths:
+      - 'playlist.m3u' # Jab bhi aap ye file change karenge, stream khud badal jayegi
+  workflow_dispatch: # Manual button ka option bhi rakha hai
 
 jobs:
-  mitv_live:
+  stream:
     runs-on: ubuntu-latest
     steps:
-    - name: 1. Install FFmpeg
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y ffmpeg
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-    - name: 2. Start Live Stream (Unlimited Loop)
-      run: |
-        # -stream_loop -1 ka matlab hai video/link kabhi band nahi hoga
-        ffmpeg -re -stream_loop -1 -user_agent "Mozilla/5.0" -i "${{ github.event.inputs.stream_url }}" \
-        -c:v libx264 -preset ultrafast -b:v 2500k -maxrate 3000k -bufsize 6000k \
-        -pix_fmt yuv420p -g 60 -c:a aac -b:a 128k -ar 44100 \
-        -f flv "rtmp://a.rtmp.youtube.com/live2/4kpb-g391-9ym6-64er-4rag"
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Start Streaming
+        run: |
+          # Pehli line se link uthayega jo playlist.m3u mein hoga
+          STREAM_URL=$(grep -v '^#' playlist.m3u | head -n 1)
+          echo "Streaming: $STREAM_URL"
+          
+          ffmpeg -re -stream_loop -1 -user_agent "Mozilla/5.0" -i "$STREAM_URL" \
+          -c:v libx264 -preset ultrafast -b:v 2500k -maxrate 3000k -bufsize 6000k \
+          -pix_fmt yuv420p -g 60 -c:a aac -b:a 128k -ar 44100 \
+          -f flv "rtmp://a.rtmp.youtube.com/live2/4kpb-g391-9ym6-64er-4rag"
